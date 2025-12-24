@@ -12,7 +12,7 @@ pub use state::*;
 pub use errors::*;
 pub use events::*;
 
-declare_id!("3PWoWeSxThLbCFGxMAmSpsCqrFJJhbdrvZg4DVrPdu1y");
+declare_id!("HWkW19PFehhdgfkGPHnTQTnfhcCQhMqokqGx3Vav7a3N");
 
 #[program]
 pub mod capstone_freelance_escrow {

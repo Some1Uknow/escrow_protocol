@@ -11,8 +11,6 @@ pub fn withdraw_payment(ctx: Context<WithdrawPayment>) -> Result<()> {
     );
 
     let amount = ctx.accounts.escrow_account.amount;
-    let bump = ctx.accounts.escrow_account.bump;
-    let client_key = ctx.accounts.escrow_account.client;
     let freelancer_key = ctx.accounts.escrow_account.freelancer;
 
     require!(
@@ -20,26 +18,7 @@ pub fn withdraw_payment(ctx: Context<WithdrawPayment>) -> Result<()> {
         EscrowError::Unauthorized
     );
 
-    // Prepare PDA seeds for signing
-    let seeds = &[
-        b"escrow",
-        client_key.as_ref(),
-        freelancer_key.as_ref(),
-        &[bump],
-    ];
-    let signer_seeds = &[&seeds[..]];
-
-    // CPI: transfer from escrow PDA → freelancer
-    let from = ctx.accounts.escrow_account.to_account_info();
-    let to = ctx.accounts.freelancer.to_account_info();
-    let system_program_ai = ctx.accounts.system_program.to_account_info();
-
-    let transfer_instruction = anchor_lang::system_program::Transfer { from, to };
-    let cpi_ctx =
-        CpiContext::new_with_signer(system_program_ai, transfer_instruction, signer_seeds);
-
-    anchor_lang::system_program::transfer(cpi_ctx, amount)?;
-
+    // Update status before closing
     let escrow = &mut ctx.accounts.escrow_account;
     escrow.status = EscrowStatus::Complete;
     escrow.completed_at = Clock::get()?.unix_timestamp;
@@ -49,6 +28,15 @@ pub fn withdraw_payment(ctx: Context<WithdrawPayment>) -> Result<()> {
         freelancer: ctx.accounts.freelancer.key(),
         amount,
     });
+
+    // Transfer ALL lamports (including rent) from escrow PDA to freelancer
+    // This effectively closes the account by zeroing its balance
+    let escrow_account_info = ctx.accounts.escrow_account.to_account_info();
+    let freelancer_account_info = ctx.accounts.freelancer.to_account_info();
+    
+    let escrow_lamports = escrow_account_info.lamports();
+    **escrow_account_info.try_borrow_mut_lamports()? = 0;
+    **freelancer_account_info.try_borrow_mut_lamports()? += escrow_lamports;
 
     Ok(())
 }
@@ -62,7 +50,8 @@ pub struct WithdrawPayment<'info> {
         mut,
         has_one = freelancer @ EscrowError::Unauthorized,
         seeds = [b"escrow", escrow_account.client.as_ref(), escrow_account.freelancer.as_ref()],
-        bump = escrow_account.bump
+        bump = escrow_account.bump,
+        close = freelancer
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
 

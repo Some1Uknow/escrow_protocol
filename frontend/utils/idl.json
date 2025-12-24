@@ -1,0 +1,692 @@
+{
+  "address": "HWkW19PFehhdgfkGPHnTQTnfhcCQhMqokqGx3Vav7a3N",
+  "metadata": {
+    "name": "capstone_freelance_escrow",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "approve_submission",
+      "discriminator": [
+        154,
+        76,
+        116,
+        120,
+        143,
+        128,
+        16,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "escrow_account"
+          ]
+        },
+        {
+          "name": "escrow_account",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "deposit_funds",
+      "discriminator": [
+        202,
+        39,
+        52,
+        211,
+        53,
+        20,
+        250,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "escrow_account"
+          ]
+        },
+        {
+          "name": "escrow_account",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_escrow",
+      "discriminator": [
+        243,
+        160,
+        77,
+        153,
+        11,
+        92,
+        48,
+        209
+      ],
+      "accounts": [
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "escrow_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "client"
+              },
+              {
+                "kind": "arg",
+                "path": "freelancer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "freelancer",
+          "type": "pubkey"
+        },
+        {
+          "name": "dispute_timeout_days",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initiate_dispute",
+      "discriminator": [
+        128,
+        242,
+        160,
+        23,
+        44,
+        61,
+        171,
+        37
+      ],
+      "accounts": [
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "escrow_account"
+          ]
+        },
+        {
+          "name": "escrow_account",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_client",
+      "discriminator": [
+        25,
+        123,
+        118,
+        38,
+        38,
+        217,
+        180,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "escrow_account"
+          ]
+        },
+        {
+          "name": "escrow_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow_account.client",
+                "account": "EscrowAccount"
+              },
+              {
+                "kind": "account",
+                "path": "escrow_account.freelancer",
+                "account": "EscrowAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_work",
+      "discriminator": [
+        158,
+        80,
+        101,
+        51,
+        114,
+        130,
+        101,
+        253
+      ],
+      "accounts": [
+        {
+          "name": "freelancer",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "escrow_account"
+          ]
+        },
+        {
+          "name": "escrow_account",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "work_link",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_payment",
+      "discriminator": [
+        118,
+        231,
+        133,
+        187,
+        151,
+        154,
+        111,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "freelancer",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "escrow_account"
+          ]
+        },
+        {
+          "name": "escrow_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow_account.client",
+                "account": "EscrowAccount"
+              },
+              {
+                "kind": "account",
+                "path": "escrow_account.freelancer",
+                "account": "EscrowAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "EscrowAccount",
+      "discriminator": [
+        36,
+        69,
+        48,
+        18,
+        128,
+        225,
+        125,
+        135
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ClientRefunded",
+      "discriminator": [
+        10,
+        208,
+        200,
+        224,
+        210,
+        248,
+        122,
+        241
+      ]
+    },
+    {
+      "name": "DisputeInitiated",
+      "discriminator": [
+        150,
+        109,
+        93,
+        252,
+        198,
+        4,
+        183,
+        153
+      ]
+    },
+    {
+      "name": "EscrowInitialized",
+      "discriminator": [
+        222,
+        186,
+        157,
+        47,
+        145,
+        142,
+        176,
+        248
+      ]
+    },
+    {
+      "name": "FundsDeposited",
+      "discriminator": [
+        157,
+        209,
+        100,
+        95,
+        59,
+        100,
+        3,
+        68
+      ]
+    },
+    {
+      "name": "PaymentWithdrawn",
+      "discriminator": [
+        200,
+        205,
+        112,
+        86,
+        86,
+        57,
+        176,
+        26
+      ]
+    },
+    {
+      "name": "SubmissionApproved",
+      "discriminator": [
+        59,
+        102,
+        182,
+        29,
+        243,
+        202,
+        148,
+        164
+      ]
+    },
+    {
+      "name": "WorkSubmitted",
+      "discriminator": [
+        136,
+        185,
+        210,
+        174,
+        216,
+        140,
+        64,
+        125
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidStatus",
+      "msg": "Invalid status for this action"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "You are not authorized to perform this action"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds to deposit"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount specified"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidWorkLink",
+      "msg": "Work link cannot be empty"
+    },
+    {
+      "code": 6005,
+      "name": "WorkLinkTooLong",
+      "msg": "Work link is too long"
+    },
+    {
+      "code": 6006,
+      "name": "EscrowAlreadyComplete",
+      "msg": "Escrow is already complete"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidTimeout",
+      "msg": "Invalid timeout period (must be 1-90 days)"
+    }
+  ],
+  "types": [
+    {
+      "name": "ClientRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeInitiated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "initiator",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "freelancer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "EscrowStatus"
+              }
+            }
+          },
+          {
+            "name": "work_link",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "funded_at",
+            "type": "i64"
+          },
+          {
+            "name": "submitted_at",
+            "type": "i64"
+          },
+          {
+            "name": "approved_at",
+            "type": "i64"
+          },
+          {
+            "name": "completed_at",
+            "type": "i64"
+          },
+          {
+            "name": "disputed_at",
+            "type": "i64"
+          },
+          {
+            "name": "refunded_at",
+            "type": "i64"
+          },
+          {
+            "name": "dispute_timeout_days",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "freelancer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Funded"
+          },
+          {
+            "name": "Submitted"
+          },
+          {
+            "name": "Approved"
+          },
+          {
+            "name": "Complete"
+          },
+          {
+            "name": "Disputed"
+          },
+          {
+            "name": "Refunded"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FundsDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "freelancer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SubmissionApproved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WorkSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "freelancer",
+            "type": "pubkey"
+          },
+          {
+            "name": "work_link",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  ]
+}
