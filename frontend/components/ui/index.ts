@@ -4,3 +4,4 @@ export { Input } from "./Input";
 export { Badge } from "./Badge";
 export { Skeleton, EscrowCardSkeleton } from "./Skeleton";
 export { ToastProvider, useToast } from "./Toast";
+export { Sheet } from "./Sheet";

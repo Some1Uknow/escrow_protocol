@@ -4,16 +4,18 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Lock, LayoutDashboard, Plus, Home } from "lucide-react";
+import { Menu, X, Lock, LayoutDashboard, Plus, Home, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 import { NETWORK } from "@/utils/constants";
+import { WalletSheet } from "@/components/WalletSheet";
 
 export const Navbar = () => {
   const pathname = usePathname();
   const { connected } = useWallet();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [walletSheetOpen, setWalletSheetOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -83,7 +85,17 @@ export const Navbar = () => {
 
             {/* Wallet Button */}
             {mounted ? (
-              <div className="hidden sm:block">
+              <div className="hidden sm:flex items-center gap-3">
+                {connected && (
+                  <button
+                    onClick={() => setWalletSheetOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#6a25f4]/20 to-indigo-600/20 hover:from-[#6a25f4]/30 hover:to-indigo-600/30 border border-[#6a25f4]/30 rounded-xl text-white font-medium transition-all shadow-lg shadow-[#6a25f4]/10 hover:shadow-[#6a25f4]/20"
+                    aria-label="Open wallet"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    <span className="text-sm">Wallet</span>
+                  </button>
+                )}
                 <WalletMultiButton />
               </div>
             ) : (
@@ -104,7 +116,7 @@ export const Navbar = () => {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-white/10 bg-[#050510]/90 backdrop-blur-xl rounded-b-2xl">
-            <div className="px-4 py-3 space-y-1">
+            <div className="px-4 py-3 space-y-2">
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive = pathname === link.href;
@@ -125,8 +137,20 @@ export const Navbar = () => {
                   </Link>
                 );
               })}
+              {connected && (
+                <button
+                  onClick={() => {
+                    setWalletSheetOpen(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium transition-all bg-[#6a25f4]/20 text-[#6a25f4] hover:bg-[#6a25f4]/30"
+                >
+                  <Wallet className="w-5 h-5" />
+                  My Wallet
+                </button>
+              )}
               {mounted && (
-                <div className="pt-3 sm:hidden">
+                <div className="pt-3">
                   <WalletMultiButton />
                 </div>
               )}
@@ -134,6 +158,9 @@ export const Navbar = () => {
           </div>
         )}
       </nav>
+
+      {/* Wallet Sheet */}
+      <WalletSheet open={walletSheetOpen} onOpenChange={setWalletSheetOpen} />
     </div>
   );
 };

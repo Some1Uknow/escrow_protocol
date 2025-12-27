@@ -61,7 +61,7 @@ export default function Home() {
         <Navbar />
 
         {/* Hero Section */}
-        <section className="flex-grow flex flex-col items-center justify-center pt-40 pb-20 px-4 md:px-8">
+        <section className="grow flex flex-col items-center justify-center pt-40 pb-20 px-4 md:px-8">
           <div className="max-w-[1100px] w-full flex flex-col gap-16">
             {/* Hero Content */}
             <div className="flex flex-col items-center text-center gap-8 md:gap-10 pt-10">
