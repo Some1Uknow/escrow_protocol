@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useEscrowProgram } from "@/hooks/useEscrowProgram";
+import { useEscrowHistory } from "@/hooks/useEscrowHistory";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -66,6 +67,12 @@ export default function EscrowDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isClosed, setIsClosed] = useState(false);
 
+  // History hook for saving escrow data
+  const { saveToHistory, history } = useEscrowHistory(publicKey?.toBase58() || null);
+
+  // Try to get escrow from history if account is closed
+  const historyItem = history.find((h) => h.address === address);
+
   const fetchEscrow = useCallback(async () => {
     if (!program || !address) return;
     setLoading(true);
@@ -76,6 +83,27 @@ export default function EscrowDetailPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const account = await (program.account as any).escrowAccount.fetch(new PublicKey(address as string));
       setEscrowAccount(account as EscrowAccountData);
+      
+      // Save to history when fetching successfully
+      if (publicKey) {
+        const isClient = (account as EscrowAccountData).client.equals(publicKey);
+        const isFreelancer = (account as EscrowAccountData).freelancer.equals(publicKey);
+        
+        if (isClient || isFreelancer) {
+          saveToHistory({
+            address: address as string,
+            client: (account as EscrowAccountData).client.toString(),
+            freelancer: (account as EscrowAccountData).freelancer.toString(),
+            amount: (account as EscrowAccountData).amount.toNumber(),
+            status: Object.keys((account as EscrowAccountData).status)[0],
+            workLink: (account as EscrowAccountData).workLink || "",
+            createdAt: (account as EscrowAccountData).createdAt.toNumber() * 1000,
+            fundedAt: (account as EscrowAccountData).fundedAt.toNumber() * 1000,
+            completedAt: (account as EscrowAccountData).completedAt?.toNumber() * 1000,
+            disputeTimeoutDays: (account as EscrowAccountData).disputeTimeoutDays,
+          });
+        }
+      }
     } catch (err) {
       console.error("Error fetching escrow:", err);
       const errorMsg = (err as Error).message || "";
@@ -89,7 +117,7 @@ export default function EscrowDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [program, address]);
+  }, [program, address, publicKey, saveToHistory]);
 
   useEffect(() => {
     fetchEscrow();
@@ -171,7 +199,40 @@ export default function EscrowDetailPage() {
                   <p className="text-gray-400 mb-4">
                     This escrow contract has been successfully completed and closed.
                   </p>
-                  <p className="text-sm text-gray-500 mb-6">
+                  
+                  {/* Show saved history data if available */}
+                  {historyItem && (
+                    <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10 text-left max-w-md mx-auto">
+                      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-[#6a25f4]" />
+                        Saved Transaction Details
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Amount:</span>
+                          <span className="text-white font-medium">{formatSOL(historyItem.amount)} SOL</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Client:</span>
+                          <span className="text-gray-300 font-mono">{shortenAddress(historyItem.client, 4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Freelancer:</span>
+                          <span className="text-gray-300 font-mono">{shortenAddress(historyItem.freelancer, 4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Status:</span>
+                          <span className="text-emerald-400 capitalize">{historyItem.status}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Created:</span>
+                          <span className="text-gray-300">{new Date(historyItem.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <p className="text-sm text-gray-500 mt-4 mb-6">
                     The funds have been transferred and the account has been closed to recover rent.
                   </p>
                 </>
@@ -182,7 +243,7 @@ export default function EscrowDetailPage() {
                   <p className="text-gray-400 mb-6">{error || "This escrow contract does not exist."}</p>
                 </>
               )}
-              <Link href="/">
+              <Link href="/dashboard">
                 <Button>Return to Dashboard</Button>
               </Link>
             </div>

@@ -7,10 +7,17 @@ export const PROGRAM_ID = new PublicKey("HWkW19PFehhdgfkGPHnTQTnfhcCQhMqokqGx3Va
 // Network configuration
 export const NETWORK = (process.env.NEXT_PUBLIC_SOLANA_NETWORK as "devnet" | "mainnet-beta" | "localnet") || "devnet";
 
+// Helius API key (optional, for better rate limits)
+const HELIUS_API_KEY = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+
 export const RPC_ENDPOINTS = {
   localnet: "http://localhost:8899",
-  devnet: "https://api.devnet.solana.com",
-  "mainnet-beta": "https://api.mainnet-beta.solana.com",
+  devnet: HELIUS_API_KEY 
+    ? `https://devnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+    : "https://api.devnet.solana.com",
+  "mainnet-beta": HELIUS_API_KEY
+    ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+    : "https://api.mainnet-beta.solana.com",
 } as const;
 
 export const RPC_ENDPOINT = RPC_ENDPOINTS[NETWORK];

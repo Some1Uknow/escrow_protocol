@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useEscrowProgram } from "@/hooks/useEscrowProgram";
+import { useEscrowHistory, HistoricalEscrow } from "@/hooks/useEscrowHistory";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -26,6 +27,7 @@ import {
   Gavel,
   History,
   Inbox,
+  Archive,
 } from "lucide-react";
 
 interface EscrowAccount {
@@ -43,6 +45,7 @@ interface EscrowAccount {
 }
 
 type FilterType = "all" | "client" | "freelancer";
+type ViewType = "active" | "history";
 
 export default function DashboardPage() {
   const program = useEscrowProgram();
@@ -51,7 +54,20 @@ export default function DashboardPage() {
   const [escrows, setEscrows] = useState<EscrowAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
+  const [viewType, setViewType] = useState<ViewType>("active");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Get escrow history hook
+  const { 
+    history, 
+    loading: historyLoading, 
+    error: historyError,
+    fetchOnChainHistory,
+    saveToHistory, 
+    getCompletedEscrows 
+  } = useEscrowHistory(
+    publicKey?.toBase58() || null
+  );
 
   // Redirect to home if not connected
   useEffect(() => {
@@ -61,12 +77,34 @@ export default function DashboardPage() {
   }, [connected, loading, router]);
 
   const fetchEscrows = async () => {
-    if (!program) return;
+    if (!program || !publicKey) return;
     setLoading(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const accounts = await (program.account as any).escrowAccount.all();
-      setEscrows(accounts as EscrowAccount[]);
+      const fetchedEscrows = accounts as EscrowAccount[];
+      setEscrows(fetchedEscrows);
+
+      // Save each escrow to history for future reference
+      fetchedEscrows.forEach((escrow) => {
+        const isClient = escrow.account.client.equals(publicKey);
+        const isFreelancer = escrow.account.freelancer.equals(publicKey);
+        
+        // Only save escrows related to the current user
+        if (isClient || isFreelancer) {
+          saveToHistory({
+            address: escrow.publicKey.toString(),
+            client: escrow.account.client.toString(),
+            freelancer: escrow.account.freelancer.toString(),
+            amount: escrow.account.amount.toNumber(),
+            status: Object.keys(escrow.account.status)[0],
+            workLink: escrow.account.workLink || "",
+            createdAt: escrow.account.createdAt.toNumber() * 1000,
+            fundedAt: escrow.account.fundedAt.toNumber() * 1000,
+            disputeTimeoutDays: escrow.account.disputeTimeoutDays,
+          });
+        }
+      });
     } catch (err) {
       console.error("Error fetching escrows:", err);
     } finally {
@@ -79,6 +117,33 @@ export default function DashboardPage() {
       fetchEscrows();
     }
   }, [program]);
+
+  // Get completed escrows from history (those no longer on-chain)
+  const onChainAddresses = escrows.map((e) => e.publicKey.toString());
+  const completedFromHistory = getCompletedEscrows(onChainAddresses);
+
+  // Filter completed history based on role
+  const filteredHistory = completedFromHistory.filter((h) => {
+    if (!publicKey) return false;
+    const walletAddr = publicKey.toBase58();
+    const isClient = h.client === walletAddr;
+    const isFreelancer = h.freelancer === walletAddr;
+
+    if (filter === "client" && !isClient) return false;
+    if (filter === "freelancer" && !isFreelancer) return false;
+    if (filter === "all" && !isClient && !isFreelancer) return false;
+
+    // Filter by search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesAddress = h.address.toLowerCase().includes(query);
+      const matchesClient = h.client.toLowerCase().includes(query);
+      const matchesFreelancer = h.freelancer.toLowerCase().includes(query);
+      return matchesAddress || matchesClient || matchesFreelancer;
+    }
+
+    return true;
+  });
 
   const filteredEscrows = escrows.filter((escrow) => {
     if (!publicKey) return false;
@@ -117,10 +182,12 @@ export default function DashboardPage() {
     return status === "funded" || status === "submitted" || status === "approved";
   }).length;
 
-  const completedDeals = filteredEscrows.filter((e) => {
+  // Count completed deals from on-chain (complete status) + history (closed accounts)
+  const completedOnChain = filteredEscrows.filter((e) => {
     const status = Object.keys(e.account.status)[0];
     return status === "complete";
   }).length;
+  const completedDeals = completedOnChain + filteredHistory.length;
 
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { color: string; bgColor: string; borderColor: string; ping?: boolean }> = {
@@ -271,6 +338,38 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
+              {/* Active/History toggle */}
+              <div className="bg-[#1a1625] p-1 rounded-xl flex items-center border border-[#2f2249]">
+                <button
+                  onClick={() => setViewType("active")}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2",
+                    viewType === "active"
+                      ? "bg-[#6a25f4] text-white shadow-sm"
+                      : "text-gray-400 hover:text-white"
+                  )}
+                >
+                  <Handshake className="w-4 h-4" />
+                  Active
+                </button>
+                <button
+                  onClick={() => setViewType("history")}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2",
+                    viewType === "history"
+                      ? "bg-[#6a25f4] text-white shadow-sm"
+                      : "text-gray-400 hover:text-white"
+                  )}
+                >
+                  <Archive className="w-4 h-4" />
+                  History
+                  {filteredHistory.length > 0 && (
+                    <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+                      {filteredHistory.length}
+                    </span>
+                  )}
+                </button>
+              </div>
               <div className="relative w-full sm:w-64 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-[#6a25f4] transition-colors w-4 h-4" />
                 <input
@@ -282,17 +381,17 @@ export default function DashboardPage() {
                 />
               </div>
               <button
-                onClick={fetchEscrows}
+                onClick={() => viewType === "history" ? fetchOnChainHistory(true) : fetchEscrows()}
                 aria-label="Refresh escrow list"
                 className="p-2.5 bg-[#1a1625] border border-[#2f2249] rounded-lg text-gray-400 hover:text-white hover:border-gray-500 transition-all"
               >
-                <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
+                <RefreshCw className={cn("w-5 h-5", (loading || historyLoading) && "animate-spin")} />
               </button>
             </div>
           </div>
 
           {/* Deals Grid */}
-          {loading ? (
+          {(loading || (viewType === "history" && historyLoading)) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-[#1a1625] border border-[#2f2249] rounded-2xl p-5">
@@ -308,20 +407,163 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+          ) : viewType === "history" ? (
+            // History View - Show completed/closed escrows from on-chain data + cache
+            historyError ? (
+              <div className="glass-panel p-12 text-center rounded-2xl">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <Archive className="w-8 h-8 text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Error Loading History</h3>
+                <p className="text-gray-400 max-w-sm mx-auto mb-6">
+                  {historyError}
+                </p>
+                <Button onClick={() => fetchOnChainHistory(true)} variant="secondary">
+                  Try Again
+                </Button>
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <div className="glass-panel p-12 text-center rounded-2xl">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+                  <Archive className="w-8 h-8 text-gray-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">No History Yet</h3>
+                <p className="text-gray-400 max-w-sm mx-auto mb-6">
+                  Completed escrows will appear here once they are withdrawn or refunded.
+                  Data is fetched from on-chain transaction logs.
+                </p>
+                <Button onClick={() => setViewType("active")} variant="secondary">
+                  View Active Deals
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
+                {filteredHistory.map((historyItem) => {
+                  const status = historyItem.status;
+                  const statusConfig = getStatusBadge(status);
+                  const isClient = publicKey?.toBase58() === historyItem.client;
+                  const isCompleted = status === "complete" || status === "refunded";
+
+                  return (
+                    <div
+                      key={historyItem.address}
+                      className="relative bg-[#1a1625] border border-[#2f2249] rounded-2xl p-5 opacity-75"
+                    >
+                      {/* Completed Badge */}
+                      <div className="absolute -top-2 -right-2 bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full text-xs font-bold border border-emerald-500/30">
+                        {status === "refunded" ? "Refunded" : "Completed"}
+                      </div>
+
+                      {/* Header */}
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500 font-mono mb-1">
+                            #{shortenAddress(historyItem.address, 4)}
+                          </span>
+                          <h4 className="text-white font-bold text-lg leading-tight">
+                            {isClient ? "Client Deal" : "Freelancer Deal"}
+                          </h4>
+                        </div>
+                        <div className={cn(
+                          "flex items-center gap-1.5 px-2.5 py-1 rounded-full border",
+                          statusConfig.bgColor,
+                          statusConfig.borderColor
+                        )}>
+                          <CheckCircle className="w-3 h-3 text-gray-400" />
+                          <span className={cn("text-xs font-bold uppercase tracking-wide", statusConfig.color)}>
+                            {status === "refunded" ? "Refunded" : "Done"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Parties */}
+                      <div className="space-y-4 mb-6">
+                        <div className="flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600" />
+                            <span className="text-gray-300">{shortenAddress(historyItem.client, 4)}</span>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-gray-600" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-300">{shortenAddress(historyItem.freelancer, 4)}</span>
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-600" />
+                          </div>
+                        </div>
+
+                        {/* Amount */}
+                        <div className="p-4 rounded-xl bg-[#0f0b15] border border-[#2f2249] flex flex-col items-center justify-center">
+                          <span className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-1">
+                            Settled Amount
+                          </span>
+                          <span className="text-3xl font-bold text-gray-400">
+                            {formatSOL(historyItem.amount)} SOL
+                          </span>
+                        </div>
+
+                        {/* Work Link */}
+                        {historyItem.workLink && (
+                          <a
+                            href={historyItem.workLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-3 rounded-xl bg-[#0f0b15] border border-[#2f2249] hover:border-purple-500/50 transition-colors group"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                  <Eye className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <div>
+                                  <span className="text-xs text-gray-500 block">Submitted Work</span>
+                                  <span className="text-sm text-purple-400 group-hover:text-purple-300 truncate max-w-[180px] block">
+                                    {historyItem.workLink.length > 35 
+                                      ? historyItem.workLink.substring(0, 35) + "..." 
+                                      : historyItem.workLink}
+                                  </span>
+                                </div>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-purple-400 transition-colors" />
+                            </div>
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Date Info */}
+                      <div className="flex items-center justify-between pt-4 border-t border-white/5 text-xs text-gray-500">
+                        <span>
+                          Created: {new Date(historyItem.createdAt).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <History className="w-3 h-3" />
+                          {historyItem.source === "onchain" ? "From blockchain" : "Cached"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           ) : filteredEscrows.length === 0 ? (
             <div className="glass-panel p-12 text-center rounded-2xl">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
                 <Inbox className="w-8 h-8 text-gray-500" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">No Escrows Found</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">No Active Escrows</h3>
               <p className="text-gray-400 max-w-sm mx-auto mb-6">
                 {filter !== "all"
                   ? "No escrows found for this filter. Try selecting 'All Deals' or create a new escrow."
                   : "Get started by creating your first escrow contract."}
               </p>
-              <Link href="/create">
-                <Button>Create Your First Escrow</Button>
-              </Link>
+              <div className="flex items-center gap-3 justify-center">
+                <Link href="/create">
+                  <Button>Create Your First Escrow</Button>
+                </Link>
+                {filteredHistory.length > 0 && (
+                  <Button variant="secondary" onClick={() => setViewType("history")}>
+                    View History ({filteredHistory.length})
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
