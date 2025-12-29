@@ -5,9 +5,9 @@ A decentralized escrow platform built on the Solana blockchain to facilitate sec
 ## Project Structure
 
 - `frontend/`: Next.js application for the user interface
-- `solana-program/`: Anchor-based Solana smart contract
+- `solana-program/`: Anchor-based Solana program
 
-## EscrowProtocol Smart Contract
+## EscrowProtocol Program
 
 This repository contains the on-chain Escrow program (EscrowProtocol) written in Rust using Anchor. It provides trustless, PDA-backed escrows for freelance payments so clients and freelancers can transact with confidence.
 
@@ -17,7 +17,7 @@ EscrowProtocol makes freelance payments easy by locking funds on-chain until the
 
 ### Overview
 
-The smart contract facilitates trustless transactions between clients and freelancers by holding funds in escrow until work is completed and approved. The system includes dispute resolution mechanisms and timeout protections for both parties.
+The program facilitates trustless transactions between clients and freelancers by holding funds in escrow until work is completed and approved. The system includes dispute resolution mechanisms and timeout protections for both parties.
 
 ### Program Information
 
@@ -129,7 +129,7 @@ Processes refund for disputed or timed-out escrows.
 
 ### Events
 
-The contract emits events for all major state changes:
+The program emits events for all major state changes:
 - `EscrowInitialized`
 - `FundsDeposited`
 - `WorkSubmitted`
@@ -182,7 +182,7 @@ programs/capstone_freelance_escrow/src/
 
 ### Error Handling
 
-The contract includes comprehensive error handling for:
+The program includes comprehensive error handling for:
 - Invalid status transitions
 - Unauthorized access attempts
 - Insufficient funds
